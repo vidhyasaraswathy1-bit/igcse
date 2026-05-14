@@ -194,13 +194,64 @@
             100% { transform: translateX(0); background-color: var(--bg-color); }
         }
 
+        /* --- NEW STYLES: BOX METHOD & WORD PROBLEMS --- */
+        .box-grid {
+            display: grid;
+            grid-template-columns: auto 1fr 1fr;
+            gap: 5px;
+            margin: 0 auto;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .box-cell {
+            border: 1px solid var(--neon-cyan);
+            padding: 10px 5px;
+            text-align: center;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 255, 255, 0.05);
+        }
+        
+        .box-header {
+            background: rgba(0, 255, 255, 0.2);
+            font-weight: bold;
+            color: var(--neon-green);
+            border-color: var(--neon-green);
+        }
+        
+        .box-target {
+            color: var(--neon-red);
+            font-weight: bold;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse { 
+            0% { opacity: 1; } 
+            50% { opacity: 0.3; } 
+            100% { opacity: 1; } 
+        }
+        
+        .word-problem-text {
+            font-size: 1.3rem;
+            line-height: 1.5;
+            text-align: left;
+            margin: 10px 0;
+            padding: 15px;
+            border-left: 3px solid var(--neon-cyan);
+            background: rgba(0, 255, 255, 0.05);
+            width: 100%;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
         <!-- HUD ALWAYS VISIBLE -->
         <header id="hud">
-            <div>SYS_TIME: <span id="time-display" class="cyan">10:00</span></div>
+            <div>PROGRESS: <span id="progress-display" class="cyan">0/20</span></div>
             <div>STREAK: <span id="streak-display">0</span></div>
             <div>SCORE: <span id="score-display">0</span></div>
         </header>
@@ -209,9 +260,9 @@
 
         <!-- START SCREEN -->
         <main id="screen-start" class="screen active">
-            <h1 class="cyan">Endless Hacker<br>Survival</h1>
+            <h1 class="cyan">Hacker<br>Survival</h1>
             <p>> SYSTEM COMPROMISED. DEPLOYING COUNTER-MEASURES.</p>
-            <p>> YOU HAVE 10 MINUTES TO BYPASS FIREWALLS.</p>
+            <p>> DECRYPT 20 NODES TO BYPASS FIREWALLS.</p>
             <p>> MAINTAIN YOUR STREAK FOR MAX POINTS.</p>
             <div style="flex-grow: 1;"></div>
             <button class="btn" onclick="startGame()">Initiate Hack Sequence</button>
@@ -228,8 +279,8 @@
 
         <!-- END SCREEN -->
         <main id="screen-end" class="screen">
-            <h1 class="red">Mission Complete</h1>
-            <p class="cyan">TIME EXPIRED</p>
+            <h1 class="cyan">Hack Complete</h1>
+            <p class="cyan">20 NODES CLEARED</p>
             <p>> FINAL SCORE: <span id="final-score" class="cyan">0</span></p>
             <p>> MAX STREAK: <span id="max-streak" class="cyan">0</span></p>
             <br>
@@ -278,6 +329,20 @@
                 { q: '500 ÷ 10', ans: 50 },
                 { q: '1200 ÷ 100', ans: 12 },
                 { q: '320 × 10', ans: 3200 }
+            ],
+            mathWordProblems: [
+                { q: 'A server has 4 racks. Each rack holds 125 hard drives. How many hard drives in total?', ans: 500 },
+                { q: 'A hacker bypasses 3 firewalls every 15 minutes. How many firewalls bypassed in 1 hour?', ans: 12 },
+                { q: 'An encryption key is 4500 bytes. It is split equally into 9 packets. What is the size of each packet?', ans: 500 },
+                { q: '8 programmers write 120 lines of code each. What is the total lines of code written?', ans: 960 },
+                { q: 'A data transfer of 1000MB is 40% complete. How many MB are transferred so far?', ans: 400 }
+            ],
+            mathBoxMethod: [
+                { top1: 20, top2: 4, left1: 10, left2: 2, c1: 200, c2: 40, c3: 40, c4: '?', ans: 8 },
+                { top1: 30, top2: 5, left1: 10, left2: 5, c1: 300, c2: 50, c3: '?', c4: 25, ans: 150 },
+                { top1: 40, top2: 2, left1: 20, left2: 1, c1: 800, c2: '?', c3: 40, c4: 2, ans: 40 },
+                { top1: 10, top2: 6, left1: 10, left2: 4, c1: 100, c2: 60, c3: 40, c4: '?', ans: 24 },
+                { top1: 50, top2: 3, left1: 20, left2: 2, c1: 1000, c2: 60, c3: '?', c4: 6, ans: 100 }
             ]
         };
 
@@ -285,8 +350,8 @@
         let score = 0;
         let streak = 0;
         let maxStreak = 0;
-        let timeLeft = 600; // 10 minutes in seconds
-        let timerInterval;
+        let questionCount = 0;
+        const maxQuestions = 20;
         let currentAnswer;
         let currentCategoryStatKey;
         let lastQuestionString = "";
@@ -296,10 +361,12 @@
             hindi: { correct: 0, total: 0 },
             vault: { correct: 0, total: 0 },
             fraction: { correct: 0, total: 0 },
-            place: { correct: 0, total: 0 }
+            place: { correct: 0, total: 0 },
+            word: { correct: 0, total: 0 },
+            box: { correct: 0, total: 0 }
         };
 
-        const types = ['hindiWordBuilder', 'hindiSpyLetter', 'mathVault', 'mathFraction', 'mathPlaceValue'];
+        const types = ['hindiWordBuilder', 'hindiSpyLetter', 'mathVault', 'mathFraction', 'mathPlaceValue', 'mathWordProblems', 'mathBoxMethod'];
 
         // --- CORE FUNCTIONS ---
 
@@ -311,24 +378,16 @@
         }
 
         function startGame() {
+            score = 0;
+            streak = 0;
+            maxStreak = 0;
+            questionCount = 0;
             switchScreen('screen-game');
-            updateHUD();
-            timerInterval = setInterval(updateTimer, 1000);
             nextQuestion();
         }
 
-        function updateTimer() {
-            timeLeft--;
-            let m = Math.floor(timeLeft / 60);
-            let s = timeLeft % 60;
-            document.getElementById('time-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
-            
-            if (timeLeft <= 0) {
-                endGame();
-            }
-        }
-
         function updateHUD() {
+            document.getElementById('progress-display').innerText = `${questionCount}/${maxQuestions}`;
             document.getElementById('score-display').innerText = score;
             document.getElementById('streak-display').innerText = streak;
         }
@@ -340,6 +399,13 @@
         // --- QUESTION GENERATION ---
 
         function nextQuestion() {
+            if (questionCount >= maxQuestions) {
+                endGame();
+                return;
+            }
+            questionCount++;
+            updateHUD();
+
             const controls = document.getElementById('controls-container');
             const qDisplay = document.getElementById('question-display');
             controls.innerHTML = ''; // Clear previous controls
@@ -466,6 +532,69 @@
                 
                 // Try to focus input automatically (might be blocked by some mobile browsers but worth trying)
                 setTimeout(() => input.focus(), 100);
+            } else if (qType === 'mathWordProblems') {
+                document.getElementById('module-name').innerText = "MATH: LOGIC OVERRIDE";
+                document.getElementById('module-status').innerText = "ACTIVE";
+                currentCategoryStatKey = 'word';
+                qDisplay.innerHTML = `<div class="word-problem-text">${qData.q}</div>`;
+                
+                // Generate distinct dummy options based on correct answer
+                let base = qData.ans;
+                let options = [base];
+                const modifiers = [10, -10, 100, -100, 50, -50, 20, -20];
+                shuffle(modifiers);
+                for(let i=0; options.length<4; i++) {
+                    let fake = base + modifiers[i];
+                    if (fake > 0 && !options.includes(fake)) options.push(fake);
+                }
+                
+                let grid = document.createElement('div');
+                grid.className = 'grid-2x2';
+                shuffle(options).forEach(opt => {
+                    let btn = document.createElement('button');
+                    btn.className = 'btn';
+                    btn.innerText = opt;
+                    btn.onclick = () => checkAnswer(opt);
+                    grid.appendChild(btn);
+                });
+                controls.appendChild(grid);
+
+            } else if (qType === 'mathBoxMethod') {
+                document.getElementById('module-name').innerText = "MATH: ARRAY DECRYPTION";
+                document.getElementById('module-status').innerText = "ACTIVE";
+                currentCategoryStatKey = 'box';
+                qDisplay.innerHTML = `
+                    <div class="box-grid">
+                        <div class="box-cell box-header">×</div>
+                        <div class="box-cell box-header">${qData.top1}</div>
+                        <div class="box-cell box-header">${qData.top2}</div>
+                        <div class="box-cell box-header">${qData.left1}</div>
+                        <div class="box-cell ${qData.c1 === '?' ? 'box-target' : ''}">${qData.c1}</div>
+                        <div class="box-cell ${qData.c2 === '?' ? 'box-target' : ''}">${qData.c2}</div>
+                        <div class="box-cell box-header">${qData.left2}</div>
+                        <div class="box-cell ${qData.c3 === '?' ? 'box-target' : ''}">${qData.c3}</div>
+                        <div class="box-cell ${qData.c4 === '?' ? 'box-target' : ''}">${qData.c4}</div>
+                    </div>
+                `;
+                
+                let options = [qData.ans];
+                const boxModifiers = [2, -2, 10, -10, 20, -20, 5, -5];
+                shuffle(boxModifiers);
+                for(let i=0; options.length<4; i++) {
+                    let fake = qData.ans + boxModifiers[i];
+                    if (fake > 0 && !options.includes(fake)) options.push(fake);
+                }
+                
+                let grid = document.createElement('div');
+                grid.className = 'grid-2x2';
+                shuffle(options).forEach(opt => {
+                    let btn = document.createElement('button');
+                    btn.className = 'btn';
+                    btn.innerText = opt;
+                    btn.onclick = () => checkAnswer(opt);
+                    grid.appendChild(btn);
+                });
+                controls.appendChild(grid);
             }
         }
 
@@ -496,7 +625,6 @@
         // --- END GAME & DEBRIEF ---
 
         function endGame() {
-            clearInterval(timerInterval);
             switchScreen('screen-end');
             document.getElementById('status-bar').style.display = 'none';
             document.getElementById('hud').style.display = 'none';
@@ -530,6 +658,10 @@
                 debriefEl.innerText = "Tip: Make the bottom numbers match before they fight!";
             } else if (weakestCat === 'place') {
                 debriefEl.innerText = "Tip: Shift the digits left for (x) and right for (÷)!";
+            } else if (weakestCat === 'word') {
+                debriefEl.innerText = "Tip: Read data carefully. Underline numbers and decide: +, -, ×, or ÷ !";
+            } else if (weakestCat === 'box') {
+                debriefEl.innerText = "Tip: For the Box Method, multiply the row header by the column header!";
             } else {
                 debriefEl.innerText = "Incomplete data. Reboot to try again.";
             }
