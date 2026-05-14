@@ -2,16 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- CRITICAL FIX: Forces mobile devices to render at 100% scale and prevents zooming/layout breaking -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Endless Hacker Survival</title>
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #050505;
+            --bg-color: #020202;
+            --grid-color: rgba(0, 255, 255, 0.05);
             --neon-green: #39ff14;
             --neon-cyan: #00ffff;
             --neon-red: #ff003c;
+            --neon-yellow: #fce803;
             --font-main: 'Share Tech Mono', monospace;
         }
 
@@ -19,35 +20,46 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            user-select: none; /* Prevents text highlighting when tapping fast */
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--neon-green);
             font-family: var(--font-main);
-            min-height: 100vh;
-            /* Fallback for iOS */
-            min-height: -webkit-fill-available; 
+            /* Modern viewport unit for perfect mobile height */
+            min-height: 100dvh; 
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Prevents scrolling */
-            text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
-            transition: background-color 0.1s;
+            overflow: hidden;
+            text-shadow: 0 0 3px rgba(57, 255, 20, 0.4);
         }
 
-        /* Scanline Overlay for Hacker Vibe */
         body::before {
-            content: " ";
-            display: block;
+            content: "";
             position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 100;
-            background-size: 100% 2px, 3px 100%;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 30px 30px;
+            z-index: -2;
+            opacity: 0.5;
+            transform: perspective(500px) rotateX(20deg) scale(1.5);
+            transform-origin: bottom;
             pointer-events: none;
         }
 
@@ -55,98 +67,119 @@
             display: flex;
             flex-direction: column;
             flex-grow: 1;
-            padding: 10px;
+            padding: 15px;
             max-width: 600px;
             margin: 0 auto;
             width: 100%;
             z-index: 10;
+            position: relative;
         }
 
-        /* --- HUD & STATUS BAR --- */
         #hud {
             display: flex;
             justify-content: space-between;
-            font-size: 1.1rem;
-            padding: 10px 0;
-            border-bottom: 1px solid var(--neon-green);
-            margin-bottom: 10px;
+            font-size: 1rem;
+            padding: 10px 15px;
+            background: rgba(0, 255, 255, 0.05);
+            border: 1px solid var(--neon-cyan);
+            border-radius: 5px;
+            margin-bottom: 15px;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.1);
         }
 
-        .cyan { color: var(--neon-cyan); text-shadow: 0 0 5px rgba(0, 255, 255, 0.5); }
-        .red { color: var(--neon-red); text-shadow: 0 0 5px rgba(255, 0, 60, 0.5); }
+        .cyan { color: var(--neon-cyan); text-shadow: 0 0 6px rgba(0, 255, 255, 0.6); }
+        .red { color: var(--neon-red); text-shadow: 0 0 6px rgba(255, 0, 60, 0.6); }
+        .yellow { color: var(--neon-yellow); text-shadow: 0 0 6px rgba(252, 232, 3, 0.6); }
 
         #status-bar {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             margin-bottom: 20px;
-            padding: 5px;
-            border: 1px dashed var(--neon-green);
+            padding: 8px;
+            border-left: 3px solid var(--neon-green);
+            background: rgba(57, 255, 20, 0.05);
             word-wrap: break-word;
+            text-transform: uppercase;
         }
 
-        /* --- SCREEN MANAGEMENT (The fix for the overlapping bug) --- */
         .screen {
-            display: none; /* Strictly hidden by default */
+            /* STRICTLY HIDDEN UNLESS ACTIVE */
+            display: none !important; 
             flex-direction: column;
             flex-grow: 1;
             width: 100%;
-            animation: fadeIn 0.3s ease;
+            animation: crtOn 0.4s ease-out;
         }
 
         .screen.active {
-            display: flex; /* Only the active class overrides the display */
+            /* ONLY ACTIVE SCREENS ARE DISPLAYED */
+            display: flex !important; 
+            justify-content: center;
         }
 
-        /* --- UI ELEMENTS --- */
-        h1, h2 {
-            font-size: 2rem;
-            margin-bottom: 20px;
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 15px;
             text-transform: uppercase;
+            text-align: center;
+            letter-spacing: 2px;
         }
 
         p {
             font-size: 1.1rem;
             margin-bottom: 15px;
-            line-height: 1.4;
+            line-height: 1.5;
+            text-align: center;
         }
 
         .btn {
-            background-color: transparent;
-            color: var(--neon-green);
-            border: 2px solid var(--neon-green);
-            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: var(--neon-cyan);
+            border: 1px solid var(--neon-cyan);
+            padding: 18px 20px;
             font-family: var(--font-main);
-            font-size: 1.2rem;
+            font-size: 1.3rem;
+            font-weight: bold;
             cursor: pointer;
-            margin: 10px 0;
+            margin: 8px 0;
             text-transform: uppercase;
-            box-shadow: 0 0 10px rgba(57, 255, 20, 0.2);
-            transition: all 0.2s;
-            width: 100%; /* Full width for easy mobile tapping */
-            border-radius: 5px;
+            border-radius: 6px;
+            box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1), 0 0 5px rgba(0, 255, 255, 0.2);
+            transition: all 0.1s ease;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            background: rgba(0, 255, 255, 0.1);
+            box-shadow: inset 0 0 15px rgba(0, 255, 255, 0.3), 0 0 10px rgba(0, 255, 255, 0.4);
         }
 
         .btn:active {
-            background-color: var(--neon-green);
+            background-color: var(--neon-cyan);
             color: var(--bg-color);
-            box-shadow: 0 0 20px rgba(57, 255, 20, 0.8);
+            transform: scale(0.98);
         }
 
         .grid-2x2 {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 12px;
             width: 100%;
         }
 
-        /* --- GAMEPLAY SPECIFIC --- */
         #question-display {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             text-align: center;
-            margin: 30px 0;
-            min-height: 80px;
+            margin: 20px 0 30px 0;
+            min-height: 100px;
             display: flex;
             align-items: center;
             justify-content: center;
+            background: rgba(0,0,0,0.4);
+            border-radius: 8px;
+            padding: 10px;
+            border: 1px dashed rgba(57, 255, 20, 0.3);
         }
 
         .input-group {
@@ -157,93 +190,99 @@
 
         #number-input {
             flex-grow: 1;
-            background: transparent;
+            background: rgba(0,0,0,0.8);
             border: 2px solid var(--neon-cyan);
             color: var(--neon-cyan);
             font-family: var(--font-main);
-            font-size: 1.5rem; /* Large font prevents iOS auto-zoom */
-            padding: 10px;
+            font-size: 1.8rem;
+            padding: 15px;
             text-align: center;
-            border-radius: 5px;
+            border-radius: 6px;
+            width: 50%;
         }
 
         #number-input:focus {
             outline: none;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            background: rgba(0, 255, 255, 0.1);
         }
 
-        /* --- ANIMATIONS --- */
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        .flash-correct {
-            animation: flashGreen 0.4s ease-out;
-        }
-        @keyframes flashGreen {
-            0% { background-color: rgba(57, 255, 20, 0.3); }
-            100% { background-color: var(--bg-color); }
-        }
-
-        .shake-wrong {
-            animation: shakeRed 0.4s ease-in-out;
-        }
-        @keyframes shakeRed {
-            0% { transform: translateX(0); background-color: rgba(255, 0, 60, 0.2); }
-            25% { transform: translateX(-10px); }
-            50% { transform: translateX(10px); }
-            75% { transform: translateX(-10px); }
-            100% { transform: translateX(0); background-color: var(--bg-color); }
-        }
-
-        /* --- NEW STYLES: BOX METHOD & WORD PROBLEMS --- */
         .box-grid {
             display: grid;
             grid-template-columns: auto 1fr 1fr;
-            gap: 5px;
+            gap: 6px;
             margin: 0 auto;
             width: 100%;
-            max-width: 300px;
+            max-width: 320px;
         }
         
         .box-cell {
             border: 1px solid var(--neon-cyan);
-            padding: 10px 5px;
+            padding: 12px 5px;
             text-align: center;
-            font-size: 1.2rem;
+            font-size: 1.4rem;
             display: flex;
             align-items: center;
             justify-content: center;
             background: rgba(0, 255, 255, 0.05);
+            border-radius: 4px;
         }
         
         .box-header {
-            background: rgba(0, 255, 255, 0.2);
+            background: rgba(0, 255, 255, 0.15);
             font-weight: bold;
             color: var(--neon-green);
             border-color: var(--neon-green);
         }
         
         .box-target {
-            color: var(--neon-red);
+            color: var(--neon-yellow);
             font-weight: bold;
-            animation: pulse 1.5s infinite;
+            font-size: 1.8rem;
+            animation: pulseTarget 1s infinite alternate;
+            background: rgba(252, 232, 3, 0.1);
+            border-color: var(--neon-yellow);
         }
-        
-        @keyframes pulse { 
-            0% { opacity: 1; } 
-            50% { opacity: 0.3; } 
-            100% { opacity: 1; } 
-        }
-        
+
         .word-problem-text {
-            font-size: 1.3rem;
+            font-size: 1.25rem;
             line-height: 1.5;
             text-align: left;
-            margin: 10px 0;
+            margin: 0;
             padding: 15px;
-            border-left: 3px solid var(--neon-cyan);
-            background: rgba(0, 255, 255, 0.05);
             width: 100%;
+            color: var(--neon-cyan);
         }
+
+        @keyframes crtOn { 
+            0% { opacity: 0; transform: scaleY(0.1); } 
+            50% { opacity: 1; transform: scaleY(1.05); }
+            100% { transform: scaleY(1); }
+        }
+
+        @keyframes pulseTarget { 
+            from { opacity: 0.6; text-shadow: 0 0 5px var(--neon-yellow); } 
+            to { opacity: 1; text-shadow: 0 0 15px var(--neon-yellow); } 
+        }
+
+        .flash-correct { animation: flashGreen 0.5s ease-out; }
+        @keyframes flashGreen {
+            0% { background-color: rgba(57, 255, 20, 0.4); }
+            100% { background-color: var(--bg-color); }
+        }
+
+        .shake-wrong { animation: shakeRed 0.5s ease-in-out; }
+        @keyframes shakeRed {
+            0% { transform: translateX(0); background-color: rgba(255, 0, 60, 0.3); }
+            20% { transform: translateX(-15px); }
+            40% { transform: translateX(15px); }
+            60% { transform: translateX(-10px); }
+            80% { transform: translateX(10px); }
+            100% { transform: translateX(0); background-color: var(--bg-color); }
+        }
+        
+        /* Utility */
+        .spacer { flex-grow: 1; }
 
     </style>
 </head>
@@ -251,49 +290,49 @@
     <div class="container">
         <!-- HUD ALWAYS VISIBLE -->
         <header id="hud">
-            <div>PROGRESS: <span id="progress-display" class="cyan">0/20</span></div>
-            <div>STREAK: <span id="streak-display">0</span></div>
-            <div>SCORE: <span id="score-display">0</span></div>
+            <div>NODE: <span id="progress-display" class="yellow">0/20</span></div>
+            <div>STREAK: <span id="streak-display" class="cyan">0</span></div>
+            <div>SCORE: <span id="score-display" class="green">0000</span></div>
         </header>
 
-        <div id="status-bar">> MODULE: <span id="module-name">SYSTEM BOOT</span> ... STATUS: <span id="module-status" class="cyan">STANDBY</span></div>
+        <div id="status-bar">> SYS_MSG: <span id="module-name" class="cyan">BOOTING...</span></div>
 
         <!-- START SCREEN -->
         <main id="screen-start" class="screen active">
             <h1 class="cyan">Hacker<br>Survival</h1>
-            <p>> SYSTEM COMPROMISED. DEPLOYING COUNTER-MEASURES.</p>
-            <p>> DECRYPT 20 NODES TO BYPASS FIREWALLS.</p>
-            <p>> MAINTAIN YOUR STREAK FOR MAX POINTS.</p>
-            <div style="flex-grow: 1;"></div>
-            <button class="btn" onclick="startGame()">Initiate Hack Sequence</button>
+            <p class="green">> 20 ENCRYPTED NODES DETECTED.</p>
+            <p>> DECRYPT ALL NODES TO BYPASS THE MAINFRAME.</p>
+            <p>> MAINTAIN YOUR COMBO STREAK FOR MAX POINTS.</p>
+            <div class="spacer"></div>
+            <button class="btn" style="border-color: var(--neon-green); color: var(--neon-green);" onclick="startGame()">Initiate Hack Sequence</button>
         </main>
 
         <!-- GAME SCREEN -->
         <main id="screen-game" class="screen">
-            <div id="question-display">QUESTION HERE</div>
+            <div id="question-display">...</div>
             <div id="controls-container">
-                <!-- Buttons/Inputs injected here by JS -->
+                <!-- Controls injected here -->
             </div>
-            <div style="flex-grow: 1;"></div>
+            <div class="spacer"></div>
         </main>
 
         <!-- END SCREEN -->
         <main id="screen-end" class="screen">
-            <h1 class="cyan">Hack Complete</h1>
-            <p class="cyan">20 NODES CLEARED</p>
-            <p>> FINAL SCORE: <span id="final-score" class="cyan">0</span></p>
-            <p>> MAX STREAK: <span id="max-streak" class="cyan">0</span></p>
-            <br>
-            <h2 style="font-size: 1.5rem;">AI Debriefing:</h2>
-            <p id="debrief-text" class="cyan">Analyzing performance data...</p>
-            <div style="flex-grow: 1;"></div>
+            <h1 class="yellow">Mainframe Bypassed</h1>
+            <p class="cyan">20 NODES CLEARED SUCCESSFULLY</p>
+            <div style="background: rgba(0,255,0,0.1); padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p>> FINAL SCORE: <span id="final-score" class="green" style="font-size: 1.5rem; font-weight:bold;">0</span></p>
+                <p>> MAX STREAK: <span id="max-streak" class="cyan">0</span></p>
+            </div>
+            <h2 style="font-size: 1.3rem; margin-top: 10px;" class="cyan">AI Debriefing:</h2>
+            <p id="debrief-text" class="yellow" style="text-align: left; border-left: 3px solid var(--neon-yellow); padding-left: 10px; font-size: 1rem;">Analyzing...</p>
+            <div class="spacer"></div>
             <button class="btn" onclick="location.reload()">Reboot System</button>
         </main>
     </div>
 
     <script>
-        // --- QUESTION BANKS (Exactly as requested) ---
-        const banks = {
+        const masterBanks = {
             hindiWordBuilder: [
                 { root: 'न', options: ['मक', 'जल', 'पट'], ans: 'मक' },
                 { root: 'म', options: ['हल', 'जक', 'रप'], ans: 'हल' },
@@ -346,7 +385,6 @@
             ]
         };
 
-        // --- GAME STATE ---
         let score = 0;
         let streak = 0;
         let maxStreak = 0;
@@ -354,7 +392,10 @@
         const maxQuestions = 20;
         let currentAnswer;
         let currentCategoryStatKey;
-        let lastQuestionString = "";
+        
+        // Active "Deck" arrays
+        let activeBanks = {};
+        let questionSequence = [];
 
         // Performance Tracking for Debrief
         const stats = {
@@ -366,14 +407,37 @@
             box: { correct: 0, total: 0 }
         };
 
-        const types = ['hindiWordBuilder', 'hindiSpyLetter', 'mathVault', 'mathFraction', 'mathPlaceValue', 'mathWordProblems', 'mathBoxMethod'];
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex > 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
 
-        // --- CORE FUNCTIONS ---
+        function generateGameDeck() {
+            // 1. Deep copy and shuffle all banks so we never pull the same question twice
+            activeBanks = {};
+            for (let key in masterBanks) {
+                activeBanks[key] = shuffle(JSON.parse(JSON.stringify(masterBanks[key])));
+            }
+
+            // 2. Create a sequence of 20 question types, ensuring equal representation
+            const baseTypes = ['hindiWordBuilder', 'hindiSpyLetter', 'mathVault', 'mathFraction', 'mathPlaceValue', 'mathWordProblems', 'mathBoxMethod'];
+            
+            // Add all 7 types, 3 times each = 21 types.
+            let fullSequence = [...baseTypes, ...baseTypes, ...baseTypes];
+            shuffle(fullSequence);
+            
+            // Pop 1 off to make it exactly 20
+            fullSequence.pop();
+            questionSequence = fullSequence; // This is our order of question categories
+        }
 
         function switchScreen(screenId) {
-            // Remove active class from all screens
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            // Add active class to target screen
             document.getElementById(screenId).classList.add('active');
         }
 
@@ -382,55 +446,42 @@
             streak = 0;
             maxStreak = 0;
             questionCount = 0;
+            generateGameDeck(); // Prep the 20 unique questions
             switchScreen('screen-game');
             nextQuestion();
         }
 
         function updateHUD() {
             document.getElementById('progress-display').innerText = `${questionCount}/${maxQuestions}`;
-            document.getElementById('score-display').innerText = score;
+            document.getElementById('score-display').innerText = score.toString().padStart(4, '0');
             document.getElementById('streak-display').innerText = streak;
         }
-
-        function shuffle(array) {
-            return array.sort(() => Math.random() - 0.5);
-        }
-
-        // --- QUESTION GENERATION ---
 
         function nextQuestion() {
             if (questionCount >= maxQuestions) {
                 endGame();
                 return;
             }
+
+            // Get the category from our pre-shuffled sequence
+            let qType = questionSequence[questionCount];
+            
+            // Pop a question from that category's active bank (Guarantees no repeats)
+            let qData = activeBanks[qType].pop();
+
             questionCount++;
             updateHUD();
 
             const controls = document.getElementById('controls-container');
             const qDisplay = document.getElementById('question-display');
-            controls.innerHTML = ''; // Clear previous controls
-            
-            let qType;
-            let qData;
-            let safety = 0;
-
-            // Prevent exact repeats
-            do {
-                qType = types[Math.floor(Math.random() * types.length)];
-                let bank = banks[qType];
-                qData = bank[Math.floor(Math.random() * bank.length)];
-                safety++;
-            } while (JSON.stringify(qData) === lastQuestionString && safety < 10);
-            
-            lastQuestionString = JSON.stringify(qData);
+            controls.innerHTML = '';
             currentAnswer = qData.ans;
 
             // Route to specific rendering logic
             if (qType === 'hindiWordBuilder') {
-                document.getElementById('module-name').innerText = "HINDI: WORD BUILDER";
-                document.getElementById('module-status').innerText = "ACTIVE";
+                document.getElementById('module-name').innerText = "DECRYPT: HINDI WORD BUILDER";
                 currentCategoryStatKey = 'hindi';
-                qDisplay.innerText = `${qData.root} + [?]`;
+                qDisplay.innerHTML = `<span class="cyan">${qData.root}</span> <span class="yellow">+</span> <span class="cyan">[?]</span>`;
                 
                 let shuffledOptions = shuffle([...qData.options]);
                 shuffledOptions.forEach(opt => {
@@ -442,10 +493,9 @@
                 });
 
             } else if (qType === 'hindiSpyLetter') {
-                document.getElementById('module-name').innerText = "HINDI: SPY LETTER";
-                document.getElementById('module-status').innerText = "ACTIVE";
+                document.getElementById('module-name').innerText = "DECRYPT: HINDI SPY LETTER";
                 currentCategoryStatKey = 'hindi';
-                qDisplay.innerText = "Find the Spy";
+                qDisplay.innerHTML = `<span style="font-size: 1.5rem">Find the Odd Letter Out</span>`;
                 
                 let grid = document.createElement('div');
                 grid.className = 'grid-2x2';
@@ -459,14 +509,11 @@
                 controls.appendChild(grid);
 
             } else if (qType === 'mathVault') {
-                document.getElementById('module-name').innerText = "MATH: VAULT CRACKER";
-                document.getElementById('module-status').innerText = "ACTIVE";
+                document.getElementById('module-name').innerText = "DECRYPT: VAULT CRACKER";
                 currentCategoryStatKey = 'vault';
                 qDisplay.innerText = qData.q;
                 
-                // Generate dummy options based on correct answer
                 let options = [qData.ans, qData.ans - 1, qData.ans + 2, qData.ans + 1];
-                // Ensure no duplicates if numbers align weirdly
                 options = [...new Set(options)]; 
                 while(options.length < 4) { options.push(options[0] + Math.floor(Math.random()*5)+3); }
                 
@@ -482,22 +529,27 @@
                 controls.appendChild(grid);
 
             } else if (qType === 'mathFraction') {
-                document.getElementById('module-name').innerText = "MATH: FRACTION BATTLES";
-                document.getElementById('module-status').innerText = "ACTIVE";
+                document.getElementById('module-name').innerText = "DECRYPT: FRACTION BATTLES";
                 currentCategoryStatKey = 'fraction';
                 qDisplay.innerText = qData.q;
                 
+                let grid = document.createElement('div');
+                grid.style.display = 'flex';
+                grid.style.gap = '10px';
+                grid.style.width = '100%';
+
                 ['<', '>', '='].forEach(sym => {
                     let btn = document.createElement('button');
                     btn.className = 'btn';
+                    btn.style.fontSize = '2rem';
                     btn.innerText = sym;
                     btn.onclick = () => checkAnswer(sym);
-                    controls.appendChild(btn);
+                    grid.appendChild(btn);
                 });
+                controls.appendChild(grid);
 
             } else if (qType === 'mathPlaceValue') {
-                document.getElementById('module-name').innerText = "MATH: PLACE VALUE";
-                document.getElementById('module-status').innerText = "ACTIVE";
+                document.getElementById('module-name').innerText = "DECRYPT: PLACE VALUE";
                 currentCategoryStatKey = 'place';
                 qDisplay.innerText = qData.q + " = ?";
                 
@@ -505,14 +557,14 @@
                 group.className = 'input-group';
                 
                 let input = document.createElement('input');
-                input.type = 'number'; // numeric keyboard on mobile
+                input.type = 'number';
                 input.id = 'number-input';
-                input.placeholder = "Enter value";
+                input.placeholder = "___";
                 
                 let btn = document.createElement('button');
                 btn.className = 'btn';
-                btn.style.width = 'auto';
-                btn.innerText = "SUBMIT";
+                btn.style.width = '40%';
+                btn.innerText = "ENTER";
                 
                 let submitFunc = () => {
                     if(input.value !== "") checkAnswer(Number(input.value));
@@ -529,16 +581,13 @@
                 group.appendChild(input);
                 group.appendChild(btn);
                 controls.appendChild(group);
-                
-                // Try to focus input automatically (might be blocked by some mobile browsers but worth trying)
                 setTimeout(() => input.focus(), 100);
+
             } else if (qType === 'mathWordProblems') {
-                document.getElementById('module-name').innerText = "MATH: LOGIC OVERRIDE";
-                document.getElementById('module-status').innerText = "ACTIVE";
+                document.getElementById('module-name').innerText = "DECRYPT: LOGIC OVERRIDE";
                 currentCategoryStatKey = 'word';
                 qDisplay.innerHTML = `<div class="word-problem-text">${qData.q}</div>`;
                 
-                // Generate distinct dummy options based on correct answer
                 let base = qData.ans;
                 let options = [base];
                 const modifiers = [10, -10, 100, -100, 50, -50, 20, -20];
@@ -560,8 +609,7 @@
                 controls.appendChild(grid);
 
             } else if (qType === 'mathBoxMethod') {
-                document.getElementById('module-name').innerText = "MATH: ARRAY DECRYPTION";
-                document.getElementById('module-status').innerText = "ACTIVE";
+                document.getElementById('module-name').innerText = "DECRYPT: ARRAY MULTIPLICATION";
                 currentCategoryStatKey = 'box';
                 qDisplay.innerHTML = `
                     <div class="box-grid">
@@ -569,11 +617,11 @@
                         <div class="box-cell box-header">${qData.top1}</div>
                         <div class="box-cell box-header">${qData.top2}</div>
                         <div class="box-cell box-header">${qData.left1}</div>
-                        <div class="box-cell ${qData.c1 === '?' ? 'box-target' : ''}">${qData.c1}</div>
-                        <div class="box-cell ${qData.c2 === '?' ? 'box-target' : ''}">${qData.c2}</div>
+                        <div class="box-cell ${qData.c1 === '?' ? 'box-target' : 'cyan'}">${qData.c1}</div>
+                        <div class="box-cell ${qData.c2 === '?' ? 'box-target' : 'cyan'}">${qData.c2}</div>
                         <div class="box-cell box-header">${qData.left2}</div>
-                        <div class="box-cell ${qData.c3 === '?' ? 'box-target' : ''}">${qData.c3}</div>
-                        <div class="box-cell ${qData.c4 === '?' ? 'box-target' : ''}">${qData.c4}</div>
+                        <div class="box-cell ${qData.c3 === '?' ? 'box-target' : 'cyan'}">${qData.c3}</div>
+                        <div class="box-cell ${qData.c4 === '?' ? 'box-target' : 'cyan'}">${qData.c4}</div>
                     </div>
                 `;
                 
@@ -598,41 +646,37 @@
             }
         }
 
-        // --- ANSWER CHECKING & FEEDBACK ---
-
         function checkAnswer(userAnswer) {
             stats[currentCategoryStatKey].total++;
             
             if (userAnswer === currentAnswer) {
                 // Correct
                 document.body.classList.add('flash-correct');
-                score += 10 + (streak * 5); // Combo points
+                score += 10 + (streak * 5); 
                 streak++;
                 if (streak > maxStreak) maxStreak = streak;
                 stats[currentCategoryStatKey].correct++;
-                setTimeout(() => { document.body.classList.remove('flash-correct'); }, 400);
+                setTimeout(() => { document.body.classList.remove('flash-correct'); }, 500);
             } else {
                 // Incorrect
                 document.body.classList.add('shake-wrong');
-                streak = 0; // Reset streak
-                setTimeout(() => { document.body.classList.remove('shake-wrong'); }, 400);
+                streak = 0; 
+                setTimeout(() => { document.body.classList.remove('shake-wrong'); }, 500);
             }
             
             updateHUD();
-            nextQuestion();
+            // Slight delay before next question for better UX
+            setTimeout(nextQuestion, 200); 
         }
-
-        // --- END GAME & DEBRIEF ---
 
         function endGame() {
             switchScreen('screen-end');
             document.getElementById('status-bar').style.display = 'none';
             document.getElementById('hud').style.display = 'none';
             
-            document.getElementById('final-score').innerText = score;
+            document.getElementById('final-score').innerText = score.toString().padStart(4, '0');
             document.getElementById('max-streak').innerText = maxStreak;
 
-            // Calculate weakest category
             let lowestScore = 100;
             let weakestCat = 'hindi';
 
@@ -646,24 +690,23 @@
                 }
             }
 
-            // Display dynamic tip
             let debriefEl = document.getElementById('debrief-text');
-            if (lowestScore === 100 && stats.hindi.total > 0) {
-                 debriefEl.innerText = "Flawless run! You're a master hacker.";
+            if (lowestScore === 100) {
+                 debriefEl.innerText = "Flawless run! You are a master hacker. No weaknesses detected.";
+                 debriefEl.style.color = "var(--neon-green)";
+                 debriefEl.style.borderColor = "var(--neon-green)";
             } else if (weakestCat === 'hindi') {
-                debriefEl.innerText = "Tip: Watch the loops on letters like भ and ध!";
+                debriefEl.innerText = "Vulnerability detected in Hindi decryption. Watch the loops on letters like भ and ध closely!";
             } else if (weakestCat === 'vault') {
-                debriefEl.innerText = "Tip: Divide by the bottom, Multiply by the top!";
+                debriefEl.innerText = "Vault calculation error rate high. Remember: Divide by the bottom, Multiply by the top!";
             } else if (weakestCat === 'fraction') {
-                debriefEl.innerText = "Tip: Make the bottom numbers match before they fight!";
+                debriefEl.innerText = "Fraction logic compromised. Always make the bottom numbers match before they fight!";
             } else if (weakestCat === 'place') {
-                debriefEl.innerText = "Tip: Shift the digits left for (x) and right for (÷)!";
+                debriefEl.innerText = "Place value shifting error. Shift digits LEFT for multiplication (×) and RIGHT for division (÷)!";
             } else if (weakestCat === 'word') {
-                debriefEl.innerText = "Tip: Read data carefully. Underline numbers and decide: +, -, ×, or ÷ !";
+                debriefEl.innerText = "Logic override failed. Read data carefully. Underline numbers and decide: +, -, ×, or ÷ before executing!";
             } else if (weakestCat === 'box') {
-                debriefEl.innerText = "Tip: For the Box Method, multiply the row header by the column header!";
-            } else {
-                debriefEl.innerText = "Incomplete data. Reboot to try again.";
+                debriefEl.innerText = "Array decryption failed. For the Box Method, multiply the row header by the column header to find the missing target!";
             }
         }
     </script>
